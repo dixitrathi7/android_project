@@ -1,0 +1,54 @@
+---
+- name: Build Android Application
+  hosts: localhost
+  become: yes
+
+  vars:
+    repo_url: "https://github.com/dixitrathi7/android_project.git"
+    clone_path: "/home/azureuser/android_project"
+    app_path: "/home/azureuser/android_project/dgc_android_blank"
+    gradle_binary: "./gradlew"
+
+  tasks:
+
+    - name: Ensure project directory exists
+      file:
+        path: "{{ clone_path }}"
+        state: directory
+        owner: azureuser
+        group: azureuser
+        mode: '0755'
+
+    - name: Clone public GitHub repo (android_project)
+      git:
+        repo: "{{ repo_url }}"
+        dest: "{{ clone_path }}"
+        version: main
+        force: yes
+        update: yes
+
+    - name: Check if required packages are installed
+      shell: |
+        command -v git && \
+        command -v curl && \
+        command -v unzip && \
+        java -version && \
+        gradle -v && \
+        sdkmanager --version
+      register: package_check
+      ignore_errors: yes
+
+    - name: Print package check result
+      debug:
+        var: package_check.stdout_lines
+
+    - name: Give execution permission to gradlew
+      file:
+        path: "{{ app_path }}/gradlew"
+        mode: '0755'
+
+    - name: Build Android application (assembleDebug)
+      shell: |
+        {{ gradle_binary }} clean assembleDebug
+      args:
+        chdir: "{{ app_path }}"
